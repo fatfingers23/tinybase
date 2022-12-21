@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+            "type": "cargo",
+            "name": "watch:server",
+            "cargoArgs": ["watch", "-x", "run --bin tinybase"],
+        },
+        {
+            "type": "cargo",
+            "name": "build",
+            "cargoArgs": ["build"],
+        }
+
+    ]
+}
