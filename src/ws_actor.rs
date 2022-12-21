@@ -283,6 +283,7 @@ impl Handler<Test> for ClientWebSocketConnection {
             //            self.send_message(&room, "Someone disconnected", 0);
             //        }
 //            self.send_message("main".to_string(), "Someone connected", id);
+//            let values = self.prefix_listners.values();
             return  "That worked".to_string();
             
 

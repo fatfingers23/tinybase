@@ -21,7 +21,8 @@ actix-rt = "2"
 actix-web = "4"
 actix-web-actors = "4.1"
 awc = "3"
-
+dotenv = "0.15.0"
+futures = "0.3.12"
 env_logger = "0.10"
 futures-util = { version = "0.3.17", default-features = false, features = ["std", "sink"] }
 log = "0.4"

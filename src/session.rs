@@ -185,9 +185,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                         "/listen" => {
                             if v.len() == 2 {
                                 self.room = v[1].to_owned();
-                                self.addr.do_send(ws_actor::Join {
+                                self.addr.do_send(ws_actor::Listen {
                                     id: self.id,
-                                    name: self.room.clone(),
+                                    key_prefix: self.room.clone(),
                                 });
 
                                 ctx.text(format!("listening to the prefix {}", v[1].to_string()));
