@@ -1,4 +1,5 @@
 use crate::models;
+use crate::schema::key_values::dsl::key_values;
 use diesel::prelude::*;
 
 type DbError = Box<dyn std::error::Error + Send + Sync>;
@@ -53,6 +54,15 @@ pub fn get_keys_by_prefix(conn: &mut SqliteConnection, prefix: String) -> Vec<St
     for entry in query_results {
         results.push(entry.key);
     }
-
     results
+}
+
+pub fn delete_by_key(conn: &mut SqliteConnection, key_to_delete: String) -> bool {
+    use crate::schema::key_values::dsl::*;
+
+    let num_deleted = diesel::delete(key_values.filter(key.eq(key_to_delete)))
+        .execute(conn)
+        .expect("Error deleting");
+
+    num_deleted > 0
 }

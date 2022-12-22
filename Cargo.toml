@@ -5,13 +5,6 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[[bin]]
-name = "tinybase"
-path = "src/main.rs"
-
-[[bin]]
-name = "websocket-client"
-path = "src/client.rs"
 
 [dependencies]
 actix = "0.13"

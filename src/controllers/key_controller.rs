@@ -1,9 +1,9 @@
 //use urlencoding::encode;
-use crate::actions::{get_entry, get_keys_by_prefix, insert_new_entry};
+use crate::actions::{delete_by_key, get_entry, get_keys_by_prefix, insert_new_entry};
 use actix_web::web;
 use actix_web::{
     delete, get, post,
-    web::{block, Bytes, Data, Form, Json, Path, Query},
+    web::{block, Path, Query},
     HttpResponse,
 };
 use diesel::{
@@ -39,16 +39,14 @@ pub async fn create_key(pool: web::Data<DbPool>, body: String) -> HttpResponse {
     let body_split: Vec<&str> = body.split("=").collect();
     let key = body_split.get(0);
     let value = body_split.get(1);
-    if let (Some(unwraped_key), Some(unwraped_value)) = (key, value) {
-        let decoded_key = decode(unwraped_key).to_owned().unwrap().to_string();
-        let decoded_value = decode(unwraped_value).to_owned().unwrap().to_string();
-
+    if let (Some(unwrapped_key), Some(unwrapped_value)) = (key, value) {
+        let decoded_key = decode(unwrapped_key).to_owned().unwrap().to_string();
+        let decoded_value = decode(unwrapped_value).to_owned().unwrap().to_string();
         let _ = block(move || {
             let mut conn = pool.get().expect("Could not get instance of the DB");
             insert_new_entry(&mut conn, decoded_key, decoded_value)
         })
         .await;
-
         return HttpResponse::Ok().body(format!(""));
     } else {
         return HttpResponse::BadRequest().into();
@@ -74,8 +72,6 @@ pub async fn get_key(pool: web::Data<DbPool>, params: Path<KeyPath>) -> HttpResp
     match entry {
         Ok(unwrapped_entry) => {
             let value = unwrapped_entry.unwrap().unwrap().value;
-
-            //Need to like encoded or decode or somthing
             return HttpResponse::Ok().body(format!("{}", value));
         }
         Err(_) => HttpResponse::Ok().body(format!("")),
@@ -83,11 +79,22 @@ pub async fn get_key(pool: web::Data<DbPool>, params: Path<KeyPath>) -> HttpResp
 }
 
 #[delete("/{key}")]
-pub async fn delete_key(params: Path<KeyPath>) -> HttpResponse {
+pub async fn delete_key(pool: web::Data<DbPool>, params: Path<KeyPath>) -> HttpResponse {
     let params = params.into_inner();
-    let key = params.key;
-    //Need to return no content if its foudn and deleted, 404 if its not found
-    return HttpResponse::NoContent().body(format!("{}", key));
+    let delete_results = web::block(move || {
+        let mut conn = pool.get().unwrap();
+        delete_by_key(&mut conn, params.key)
+    })
+    .await
+    .map_err(actix_web::error::ErrorInternalServerError);
+
+    match delete_results {
+        Ok(did_it_delete) => match did_it_delete {
+            true => HttpResponse::NoContent().body(format!("")),
+            false => HttpResponse::NotFound().body(format!("")),
+        },
+        Err(_) => HttpResponse::BadRequest().body(format!("")),
+    }
 }
 
 #[derive(Deserialize)]
@@ -103,8 +110,6 @@ pub async fn list_keys(pool: web::Data<DbPool>, params: Query<KeyList>) -> HttpR
         Some(param_encode) => param_encode,
         None => false,
     };
-
-    let pretend_keys = ["test", "test2", "{'test': 'test}", "pl a a "];
 
     let results = web::block(move || {
         let mut conn = pool.get().unwrap();

@@ -20,7 +20,7 @@ use actix_web::{
 };
 use actix_web_actors::ws;
 use actors::{session::WsChatSession, ws_actor::ClientWebSocketConnection, ws_actor::Test};
-use controllers::key_controller::{create_key, get_key, list_keys, url_create_key};
+use controllers::key_controller::{create_key, delete_key, get_key, list_keys, url_create_key};
 use diesel::{
     prelude::*,
     r2d2::{self, ConnectionManager},
@@ -107,6 +107,7 @@ async fn main() -> std::io::Result<()> {
                     .service(create_key)
                     .service(get_key)
                     .service(list_keys)
+                    .service(delete_key)
                     .route("/test", web::get().to(test))
                     .wrap(auth_middleware::CheckForSecret),
             )
