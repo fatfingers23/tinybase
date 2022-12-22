@@ -1,0 +1,7 @@
+-- Your SQL goes here
+CREATE TABLE key_values (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key VARCHAR NOT NULL,
+  value VARCHAR NOT NULL
+)
+

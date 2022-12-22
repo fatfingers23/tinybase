@@ -1,3 +1,10 @@
+mod actors;
+mod controllers;
+mod db;
+mod schema;
+mod models;
+mod actions;
+
 use std::{
     collections::{HashMap, HashSet},
     sync::{
@@ -13,13 +20,27 @@ use actix_web::{
     middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use actix_web_actors::ws;
-use ws_actor::ClientWebSocketConnection;
+use actors::{
+    ws_actor::ClientWebSocketConnection,
+    ws_actor::Test,
+    session::WsChatSession
+};
+use diesel::{
+    prelude::*,
+    r2d2::{self, ConnectionManager},
+};
+use uuid::Uuid;
+use controllers::key_controller::{
+    url_create_key,
+    create_key,
+    get_key,
+    list_keys
+};
 extern crate dotenv;
-use dotenv::dotenv;
+//extern crate urlencoding;
+
 
 mod auth_middleware;
-mod session;
-mod ws_actor;
 
 async fn index() -> impl Responder {
     NamedFile::open_async("./static/index.html").await.unwrap()
@@ -33,8 +54,8 @@ async fn chat_route(
 ) -> Result<HttpResponse, Error> {
     println!();
     ws::start(
-        session::WsChatSession {
-            id: 0,
+        WsChatSession {
+            id: Uuid::new_v4(),
             hb: Instant::now(),
             room: "main".to_owned(),
             name: None,
@@ -53,7 +74,7 @@ async fn get_count(count: web::Data<AtomicUsize>) -> impl Responder {
 
 /// Displays state
 async fn test(addr: web::Data<Addr<ClientWebSocketConnection>>) -> impl Responder {
-    let result = addr.send(ws_actor::Test {}).await;
+    let result = addr.send(Test {}).await;
     return match result {
         Ok(test) => return format!("{}", test),
         Err(_error) => {
@@ -61,6 +82,10 @@ async fn test(addr: web::Data<Addr<ClientWebSocketConnection>>) -> impl Responde
         }
     };
 }
+
+type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
+
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -72,10 +97,19 @@ async fn main() -> std::io::Result<()> {
     let app_state = Arc::new(AtomicUsize::new(0));
     // start chat server actor
     let server = ClientWebSocketConnection::new(app_state.clone()).start();
-//    https://kv.replit.com/v0/eyJhbGciOiJIUzUxMiIsImlzcyI6ImNvbm1hbiIsImtpZCI6InByb2Q6MSIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjb25tYW4iLCJleHAiOjE2NzE3MDIzMzcsImlhdCI6MTY3MTU5MDczNywiZGF0YWJhc2VfaWQiOiIxMDczNzEyZS1kZTQ1LTQ1OWMtODk3Zi04NGY3M2Q3NWNiN2EiLCJ1c2VyIjoiZmF0ZmluZ2VyczIzIiwic2x1ZyI6InJlcGxpdC1kYi1ndWkifQ.fWZmRHFPOdgag03wpH3KppETip4qJGrrvYK7r3ew6hNSl9tHI4XonJxlEVhAE0Xo9uGvPOT9vToBYcMcLm1JIA
+
+    // set up database connection pool
+    let conn_spec = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+    let manager = ConnectionManager::<SqliteConnection>::new(conn_spec);
+    let pool = r2d2::Pool::builder()
+        .build(manager)
+        .expect("Failed to create pool.");
+
+
     log::info!("starting HTTP server at http://localhost:8080");
     HttpServer::new(move || {
         App::new()
+            .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::from(app_state.clone()))
             .app_data(web::Data::new(server.clone()))
             .service(Files::new("/static", "./static"))
@@ -83,6 +117,10 @@ async fn main() -> std::io::Result<()> {
             .service(
                     web::scope("/v0/{secret}")
                     .route("/ws", web::get().to(chat_route))
+                    .service(url_create_key)
+                    .service(create_key)
+                    .service(get_key)
+                    .service(list_keys)
                     .route("/test", web::get().to(test))
                     .wrap(auth_middleware::CheckForSecret)
             )

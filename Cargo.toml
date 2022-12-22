@@ -29,3 +29,15 @@ log = "0.4"
 tokio = { version = "1.13.1", features = ["full"] }
 tokio-stream = "0.1.8"
 rand = "0.8"
+urlencoding = "2.1.2"
+serde = { version = "1", features = ["derive"] }
+diesel = { version = "2", features = ["sqlite", "r2d2"] }
+
+
+[dependencies.uuid]
+version = "1.2.2"
+features = [
+    "v4",                # Lets you generate random UUIDs
+    "fast-rng",          # Use a faster (but still sufficiently random) RNG
+    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+]

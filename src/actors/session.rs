@@ -1,9 +1,8 @@
 use std::time::{Duration, Instant};
-
 use actix::prelude::*;
 use actix_web_actors::ws;
-
-use crate::ws_actor;
+use crate::actors::ws_actor;
+use uuid::Uuid;
 
 /// How often heartbeat pings are sent
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
@@ -16,14 +15,14 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Disconnect {
-    pub id: usize,
+    pub id: Uuid,
 }
 
 
 #[derive(Debug)]
 pub struct WsChatSession {
     /// unique session id
-    pub id: usize,
+    pub id: Uuid,
 
     /// Client must send ping at least once per 10 seconds (CLIENT_TIMEOUT),
     /// otherwise we drop connection.
@@ -88,7 +87,8 @@ impl Actor for WsChatSession {
             .into_actor(self)
             .then(|res, act, ctx| {
                 match res {
-                    Ok(res) => act.id = res,
+                    
+                    Ok(res) => act.id =  res.unwrap(),
                     // something is wrong with chat server
                     _ => ctx.stop(),
                 }

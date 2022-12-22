@@ -12,6 +12,7 @@ use std::{
 use actix_web::{web, App, HttpServer};
 use actix::prelude::*;
 use rand::{self, rngs::ThreadRng, Rng};
+use uuid::Uuid;
 
 /// Chat server sends this messages to session
 #[derive(Message)]
@@ -22,7 +23,7 @@ pub struct Message(pub String);
 
 /// New chat session is created
 #[derive(Message)]
-#[rtype(usize)]
+#[rtype(result = "Result<Uuid, std::io::Error>")]
 pub struct Connect {
     pub addr: Recipient<Message>,
 }
@@ -31,7 +32,7 @@ pub struct Connect {
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Disconnect {
-    pub id: usize,
+    pub id: Uuid,
 }
 
 /// Send message to specific room
@@ -39,7 +40,7 @@ pub struct Disconnect {
 #[rtype(result = "()")]
 pub struct ClientMessage {
     /// Id of the client session
-    pub id: usize,
+    pub id: Uuid,
     /// Peer message
     pub msg: String,
     /// Room name
@@ -58,7 +59,7 @@ impl actix::Message for ListRooms {
 #[rtype(result = "()")]
 pub struct Join {
     /// Client ID
-    pub id: usize,
+    pub id: Uuid,
 
     /// Room name
     pub name: String,
@@ -68,7 +69,7 @@ pub struct Join {
 #[rtype(result = "()")]
 pub struct Listen {
     /// Client ID
-    pub id: usize,
+    pub id: Uuid,
 
     ///Prefix
     pub key_prefix: String
@@ -88,11 +89,11 @@ pub struct Test {
 /// Implementation is very naïve.
 #[derive(Debug)]
 pub struct ClientWebSocketConnection {
-    sessions: HashMap<usize, Recipient<Message>>,
-    pub rooms: HashMap<String, HashSet<usize>>,
+    sessions: HashMap<Uuid, Recipient<Message>>,
+    pub rooms: HashMap<String, HashSet<Uuid>>,
     rng: ThreadRng,
     visitor_count: Arc<AtomicUsize>,
-    pub prefix_listners: HashMap<String, HashSet<usize>>
+    pub prefix_listners: HashMap<String, HashSet<Uuid>>
 }
 
 impl ClientWebSocketConnection {
@@ -113,7 +114,7 @@ impl ClientWebSocketConnection {
 
 impl ClientWebSocketConnection {
     /// Send message to all users in the room
-    fn send_message(&self, room: &str, message: &str, skip_id: usize) {
+    fn send_message(&self, room: &str, message: &str, skip_id: Uuid) {
         if let Some(sessions) = self.rooms.get(room) {
             for id in sessions {
                 if *id != skip_id {
@@ -137,16 +138,18 @@ impl Actor for ClientWebSocketConnection {
 ///
 /// Register new session and assign unique id to this session
 impl Handler<Connect> for ClientWebSocketConnection {
-    type Result = usize;
+    type Result = Result<Uuid, std::io::Error>;
 
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
         println!("Someone joined");
 
         // notify all users in same room
-        self.send_message("main", "Someone joined", 0);
+//        self.send_message("main", "Someone joined", 0);
 
         // register session with random id
-        let id = self.rng.gen::<usize>();
+        let id = Uuid::new_v4();
+        let test = self.rng.gen::<usize>();
+
         self.sessions.insert(id, msg.addr);
 
         // auto join session to main room
@@ -156,10 +159,11 @@ impl Handler<Connect> for ClientWebSocketConnection {
             .insert(id);
 
         let count = self.visitor_count.fetch_add(1, Ordering::SeqCst);
-        self.send_message("main", &format!("Total visitors {count}"), 0);
+//        self.send_message("main", &format!("Total visitors {count}"), 0);
 
         // send id back
-        id
+        Ok(id)
+
     }
 }
 
@@ -183,7 +187,7 @@ impl Handler<Disconnect> for ClientWebSocketConnection {
         }
         // send message to other users
         for room in rooms {
-            self.send_message(&room, "Someone disconnected", 0);
+//            self.send_message(&room, "Someone disconnected", 0);
         }
     }
 }
@@ -229,7 +233,7 @@ impl Handler<Join> for ClientWebSocketConnection {
         }
         // send message to other users
         for room in rooms {
-            self.send_message(&room, "Someone disconnected", 0);
+//            self.send_message(&room, "Someone disconnected", 0);
         }
 
         self.rooms
@@ -285,7 +289,7 @@ impl Handler<Test> for ClientWebSocketConnection {
 //            self.send_message("main".to_string(), "Someone connected", id);
 //            let values = self.prefix_listners.values();
             return  "That worked".to_string();
-            
+
 
             //        self.send_message(&prefix_clone, "Someone connected", id);
         }
