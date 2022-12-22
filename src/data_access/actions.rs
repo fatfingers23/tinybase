@@ -1,5 +1,6 @@
-use crate::models;
-use crate::schema::key_values::dsl::key_values;
+use crate::data_access::models;
+use crate::data_access::schema::key_values::dsl::key_values;
+use crate::data_access::schema::key_values::dsl::*;
 use diesel::prelude::*;
 
 type DbError = Box<dyn std::error::Error + Send + Sync>;
@@ -9,8 +10,6 @@ pub fn insert_new_entry(
     new_key: String,
     new_value: String,
 ) -> Result<models::NewKeyValue, DbError> {
-    use crate::schema::key_values::dsl::*;
-
     let new_key_value = models::NewKeyValue {
         key: new_key,
         value: new_value,
@@ -30,8 +29,6 @@ pub fn get_entry(
     conn: &mut SqliteConnection,
     search_key: String,
 ) -> Result<Option<models::KeyValue>, DbError> {
-    use crate::schema::key_values::dsl::*;
-
     let entry = key_values
         .filter(key.eq(search_key))
         .first::<models::KeyValue>(conn)
@@ -41,8 +38,6 @@ pub fn get_entry(
 }
 
 pub fn get_keys_by_prefix(conn: &mut SqliteConnection, prefix: String) -> Vec<String> {
-    use crate::schema::key_values::dsl::*;
-
     let pattern = format!("{}%", prefix);
 
     let query_results = key_values
@@ -58,8 +53,6 @@ pub fn get_keys_by_prefix(conn: &mut SqliteConnection, prefix: String) -> Vec<St
 }
 
 pub fn delete_by_key(conn: &mut SqliteConnection, key_to_delete: String) -> bool {
-    use crate::schema::key_values::dsl::*;
-
     let num_deleted = diesel::delete(key_values.filter(key.eq(key_to_delete)))
         .execute(conn)
         .expect("Error deleting");

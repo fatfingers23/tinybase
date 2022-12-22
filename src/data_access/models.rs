@@ -1,7 +1,7 @@
 use diesel::{AsChangeset, Insertable, Queryable};
 use serde::{Deserialize, Serialize};
 
-use crate::schema::key_values;
+use crate::data_access::schema::key_values;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable)]
 #[diesel(primary_key(id))]

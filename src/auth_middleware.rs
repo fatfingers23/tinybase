@@ -50,28 +50,23 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let secret: String = req.match_info().get("secret").unwrap().parse().unwrap();
-        match env::var("SECRET").unwrap() {
+        return match env::var("SECRET").unwrap() {
             saved_secret => {
                 if saved_secret == secret {
                     let fut = self.service.call(req);
-                    return Box::pin(async move {
+                    Box::pin(async move {
                         let res = fut.await?;
                         let ad = Ok(res);
                         return ad;
-                    });
+                    })
                 } else {
-                    return Box::pin(async move {
+                    Box::pin(async move {
                         let not_auth =
                             HttpResponse::Unauthorized().body("You do not have the correct secret");
                         return Ok(ServiceResponse::new(req.request().clone(), not_auth));
-                    });
+                    })
                 }
             }
-            _ => Box::pin(async move {
-                let not_auth = HttpResponse::Unauthorized()
-                    .body("You do not have a secret saved in the .env file");
-                return Ok(ServiceResponse::new(req.request().clone(), not_auth));
-            }),
-        }
+        };
     }
 }

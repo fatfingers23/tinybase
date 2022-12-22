@@ -3,7 +3,6 @@
 //! room through `ClientWebSocketConnection`.
 
 use actix::prelude::*;
-use actix_web::{web, App, HttpServer};
 use rand::{self, rngs::ThreadRng, Rng};
 use std::{
     collections::{HashMap, HashSet},
@@ -144,7 +143,6 @@ impl Handler<Connect> for ClientWebSocketConnection {
 
         // register session with random id
         let id = Uuid::new_v4();
-        let test = self.rng.gen::<usize>();
 
         self.sessions.insert(id, msg.addr);
 

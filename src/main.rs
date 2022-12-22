@@ -1,11 +1,9 @@
-mod actions;
 mod actors;
+mod auth_middleware;
 mod controllers;
-mod models;
-mod schema;
+mod data_access;
 
 use std::{
-    collections::{HashMap, HashSet},
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -19,8 +17,8 @@ use actix_web::{
     middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use actix_web_actors::ws;
-use actors::{session::WsChatSession, ws_actor::ClientWebSocketConnection, ws_actor::Test};
-use controllers::key_controller::{create_key, delete_key, get_key, list_keys, url_create_key};
+use actors::{session::WsChatSession, ws_actor::ClientWebSocketConnection};
+use controllers::key_controller::*;
 use diesel::{
     prelude::*,
     r2d2::{self, ConnectionManager},
@@ -28,8 +26,6 @@ use diesel::{
 use uuid::Uuid;
 extern crate dotenv;
 //extern crate urlencoding;
-
-mod auth_middleware;
 
 async fn index() -> impl Responder {
     NamedFile::open_async("./static/index.html").await.unwrap()
@@ -61,18 +57,16 @@ async fn get_count(count: web::Data<AtomicUsize>) -> impl Responder {
     format!("Visitors: {current_count}")
 }
 
-/// Displays state
-async fn test(addr: web::Data<Addr<ClientWebSocketConnection>>) -> impl Responder {
-    let result = addr.send(Test {}).await;
-    return match result {
-        Ok(test) => return format!("{}", test),
-        Err(_error) => {
-            return format!("{}", _error);
-        }
-    };
-}
-
-type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
+// /// Example on how to send an actor a message from a "controller"
+// async fn test(addr: web::Data<Addr<ClientWebSocketConnection>>) -> impl Responder {
+//     let result = addr.send(Test {}).await;
+//     return match result {
+//         Ok(test) => return format!("{}", test),
+//         Err(_error) => {
+//             return format!("{}", _error);
+//         }
+//     };
+// }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -108,7 +102,6 @@ async fn main() -> std::io::Result<()> {
                     .service(get_key)
                     .service(list_keys)
                     .service(delete_key)
-                    .route("/test", web::get().to(test))
                     .wrap(auth_middleware::CheckForSecret),
             )
             .route("/count", web::get().to(get_count))

@@ -1,5 +1,5 @@
 //use urlencoding::encode;
-use crate::actions::{delete_by_key, get_entry, get_keys_by_prefix, insert_new_entry};
+use crate::data_access::actions::*;
 use actix_web::web;
 use actix_web::{
     delete, get, post,
@@ -99,13 +99,18 @@ pub async fn delete_key(pool: web::Data<DbPool>, params: Path<KeyPath>) -> HttpR
 
 #[derive(Deserialize)]
 pub struct KeyList {
-    prefix: String,
+    prefix: Option<String>,
     encode: Option<bool>,
 }
 
 #[get("")]
 pub async fn list_keys(pool: web::Data<DbPool>, params: Query<KeyList>) -> HttpResponse {
     let params = params.into_inner();
+
+    let prefix = match params.prefix {
+        Some(param_prefix) => param_prefix,
+        None => return HttpResponse::Ok().body(format!("")),
+    };
     let encode_keys = match params.encode {
         Some(param_encode) => param_encode,
         None => false,
@@ -113,7 +118,7 @@ pub async fn list_keys(pool: web::Data<DbPool>, params: Query<KeyList>) -> HttpR
 
     let results = web::block(move || {
         let mut conn = pool.get().unwrap();
-        get_keys_by_prefix(&mut conn, params.prefix)
+        get_keys_by_prefix(&mut conn, prefix)
     })
     .await
     .map_err(actix_web::error::ErrorInternalServerError);
