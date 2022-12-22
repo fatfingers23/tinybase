@@ -1,4 +1,4 @@
-use diesel::{Queryable, Insertable, AsChangeset};
+use diesel::{AsChangeset, Insertable, Queryable};
 use serde::{Deserialize, Serialize};
 
 use crate::schema::key_values;
@@ -9,12 +9,12 @@ use crate::schema::key_values;
 pub struct KeyValue {
     pub id: Option<i32>,
     pub key: String,
-    pub value: String
+    pub value: String,
 }
 
-#[derive(Debug, Insertable, AsChangeset )]
+#[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = key_values)]
 pub struct NewKeyValue {
     pub key: String,
-    pub value: String
+    pub value: String,
 }

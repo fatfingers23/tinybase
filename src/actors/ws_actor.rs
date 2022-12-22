@@ -2,6 +2,9 @@
 //! And manages available rooms. Peers send messages to other peers in same
 //! room through `ClientWebSocketConnection`.
 
+use actix::prelude::*;
+use actix_web::{web, App, HttpServer};
+use rand::{self, rngs::ThreadRng, Rng};
 use std::{
     collections::{HashMap, HashSet},
     sync::{
@@ -9,9 +12,6 @@ use std::{
         Arc,
     },
 };
-use actix_web::{web, App, HttpServer};
-use actix::prelude::*;
-use rand::{self, rngs::ThreadRng, Rng};
 use uuid::Uuid;
 
 /// Chat server sends this messages to session
@@ -72,17 +72,13 @@ pub struct Listen {
     pub id: Uuid,
 
     ///Prefix
-    pub key_prefix: String
+    pub key_prefix: String,
 }
 
 /// New chat session is created
 #[derive(Message)]
 #[rtype(String)]
-pub struct Test {
-
-}
-
-
+pub struct Test {}
 
 /// `ClientWebSocketConnection` manages chat rooms and responsible for coordinating chat session.
 ///
@@ -93,7 +89,7 @@ pub struct ClientWebSocketConnection {
     pub rooms: HashMap<String, HashSet<Uuid>>,
     rng: ThreadRng,
     visitor_count: Arc<AtomicUsize>,
-    pub prefix_listners: HashMap<String, HashSet<Uuid>>
+    pub prefix_listners: HashMap<String, HashSet<Uuid>>,
 }
 
 impl ClientWebSocketConnection {
@@ -107,7 +103,7 @@ impl ClientWebSocketConnection {
             rooms,
             rng: rand::thread_rng(),
             visitor_count,
-            prefix_listners: HashMap::new()
+            prefix_listners: HashMap::new(),
         }
     }
 }
@@ -144,7 +140,7 @@ impl Handler<Connect> for ClientWebSocketConnection {
         println!("Someone joined");
 
         // notify all users in same room
-//        self.send_message("main", "Someone joined", 0);
+        //        self.send_message("main", "Someone joined", 0);
 
         // register session with random id
         let id = Uuid::new_v4();
@@ -159,11 +155,10 @@ impl Handler<Connect> for ClientWebSocketConnection {
             .insert(id);
 
         let count = self.visitor_count.fetch_add(1, Ordering::SeqCst);
-//        self.send_message("main", &format!("Total visitors {count}"), 0);
+        //        self.send_message("main", &format!("Total visitors {count}"), 0);
 
         // send id back
         Ok(id)
-
     }
 }
 
@@ -187,7 +182,7 @@ impl Handler<Disconnect> for ClientWebSocketConnection {
         }
         // send message to other users
         for room in rooms {
-//            self.send_message(&room, "Someone disconnected", 0);
+            //            self.send_message(&room, "Someone disconnected", 0);
         }
     }
 }
@@ -233,7 +228,7 @@ impl Handler<Join> for ClientWebSocketConnection {
         }
         // send message to other users
         for room in rooms {
-//            self.send_message(&room, "Someone disconnected", 0);
+            //            self.send_message(&room, "Someone disconnected", 0);
         }
 
         self.rooms
@@ -265,32 +260,28 @@ impl Handler<Listen> for ClientWebSocketConnection {
 
         self.prefix_listners.insert(key_prefix, HashSet::from([id]));
 
-
         //        self.send_message(&prefix_clone, "Someone connected", id);
     }
 }
 
 impl Handler<Test> for ClientWebSocketConnection {
-        type Result = String;
+    type Result = String;
 
-        fn handle(&mut self, msg: Test, _: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, msg: Test, _: &mut Context<Self>) -> Self::Result {
+        //        // remove session from all rooms
+        //        for (n, sessions) in &mut self.rooms {
+        //            if sessions.remove(&id) {
+        //                rooms.push(n.to_owned());
+        //            }
+        //        }
+        //        // send message to other users
+        //        for room in rooms {
+        //            self.send_message(&room, "Someone disconnected", 0);
+        //        }
+        //            self.send_message("main".to_string(), "Someone connected", id);
+        //            let values = self.prefix_listners.values();
+        return "That worked".to_string();
 
-
-            //        // remove session from all rooms
-            //        for (n, sessions) in &mut self.rooms {
-            //            if sessions.remove(&id) {
-            //                rooms.push(n.to_owned());
-            //            }
-            //        }
-            //        // send message to other users
-            //        for room in rooms {
-            //            self.send_message(&room, "Someone disconnected", 0);
-            //        }
-//            self.send_message("main".to_string(), "Someone connected", id);
-//            let values = self.prefix_listners.values();
-            return  "That worked".to_string();
-
-
-            //        self.send_message(&prefix_clone, "Someone connected", id);
-        }
+        //        self.send_message(&prefix_clone, "Someone connected", id);
+    }
 }

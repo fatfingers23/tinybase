@@ -1,9 +1,8 @@
+mod actions;
 mod actors;
 mod controllers;
-mod db;
-mod schema;
 mod models;
-mod actions;
+mod schema;
 
 use std::{
     collections::{HashMap, HashSet},
@@ -20,25 +19,15 @@ use actix_web::{
     middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use actix_web_actors::ws;
-use actors::{
-    ws_actor::ClientWebSocketConnection,
-    ws_actor::Test,
-    session::WsChatSession
-};
+use actors::{session::WsChatSession, ws_actor::ClientWebSocketConnection, ws_actor::Test};
+use controllers::key_controller::{create_key, get_key, list_keys, url_create_key};
 use diesel::{
     prelude::*,
     r2d2::{self, ConnectionManager},
 };
 use uuid::Uuid;
-use controllers::key_controller::{
-    url_create_key,
-    create_key,
-    get_key,
-    list_keys
-};
 extern crate dotenv;
 //extern crate urlencoding;
-
 
 mod auth_middleware;
 
@@ -85,8 +74,6 @@ async fn test(addr: web::Data<Addr<ClientWebSocketConnection>>) -> impl Responde
 
 type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 
-
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_LOG", "debug");
@@ -105,7 +92,6 @@ async fn main() -> std::io::Result<()> {
         .build(manager)
         .expect("Failed to create pool.");
 
-
     log::info!("starting HTTP server at http://localhost:8080");
     HttpServer::new(move || {
         App::new()
@@ -115,18 +101,17 @@ async fn main() -> std::io::Result<()> {
             .service(Files::new("/static", "./static"))
             .service(web::resource("/").to(index))
             .service(
-                    web::scope("/v0/{secret}")
+                web::scope("/v0/{secret}")
                     .route("/ws", web::get().to(chat_route))
                     .service(url_create_key)
                     .service(create_key)
                     .service(get_key)
                     .service(list_keys)
                     .route("/test", web::get().to(test))
-                    .wrap(auth_middleware::CheckForSecret)
+                    .wrap(auth_middleware::CheckForSecret),
             )
             .route("/count", web::get().to(get_count))
             .wrap(Logger::default())
-
     })
     .workers(2)
     .bind(("127.0.0.1", 8080))?

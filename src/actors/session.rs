@@ -1,7 +1,7 @@
-use std::time::{Duration, Instant};
+use crate::actors::ws_actor;
 use actix::prelude::*;
 use actix_web_actors::ws;
-use crate::actors::ws_actor;
+use std::time::{Duration, Instant};
 use uuid::Uuid;
 
 /// How often heartbeat pings are sent
@@ -10,14 +10,12 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
-
 // Session is disconnected
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Disconnect {
     pub id: Uuid,
 }
-
 
 #[derive(Debug)]
 pub struct WsChatSession {
@@ -36,7 +34,6 @@ pub struct WsChatSession {
 
     /// Chat server
     pub addr: Addr<ws_actor::ClientWebSocketConnection>,
-
 }
 
 impl WsChatSession {
@@ -87,8 +84,7 @@ impl Actor for WsChatSession {
             .into_actor(self)
             .then(|res, act, ctx| {
                 match res {
-                    
-                    Ok(res) => act.id =  res.unwrap(),
+                    Ok(res) => act.id = res.unwrap(),
                     // something is wrong with chat server
                     _ => ctx.stop(),
                 }
@@ -181,7 +177,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                             } else {
                                 ctx.text("!!! name is required");
                             }
-                        },
+                        }
                         "/listen" => {
                             if v.len() == 2 {
                                 self.room = v[1].to_owned();
@@ -203,7 +199,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsChatSession {
                     } else {
                         m.to_owned()
                     };
-                    
+
                     print!("{:?}", self.id);
                     // send message to chat server
                     self.addr.do_send(ws_actor::ClientMessage {

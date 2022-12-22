@@ -36,11 +36,9 @@ pub async fn url_create_key(pool: web::Data<DbPool>, info: Path<KeyValue>) -> Ht
 
 #[post("")]
 pub async fn create_key(pool: web::Data<DbPool>, body: String) -> HttpResponse {
-    println!("from request {}", body);
     let body_split: Vec<&str> = body.split("=").collect();
     let key = body_split.get(0);
     let value = body_split.get(1);
-    println!("Whart {}", value.unwrap());
     if let (Some(unwraped_key), Some(unwraped_value)) = (key, value) {
         let decoded_key = decode(unwraped_key).to_owned().unwrap().to_string();
         let decoded_value = decode(unwraped_value).to_owned().unwrap().to_string();

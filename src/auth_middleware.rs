@@ -7,9 +7,7 @@ use futures::{
     Future,
 };
 use std::env;
-use std::{
-    pin::Pin,
-};
+use std::pin::Pin;
 // There are two steps in middleware processing.
 // 1. Middleware initialization, middleware factory gets called with
 //    next service in chain as parameter.
@@ -22,7 +20,7 @@ pub struct CheckForSecret;
 impl<S> Transform<S, ServiceRequest> for CheckForSecret
 where
     S: Service<ServiceRequest, Response = ServiceResponse, Error = Error>,
-    S::Future: 'static
+    S::Future: 'static,
 {
     type Response = ServiceResponse;
     type Error = Error;
@@ -43,7 +41,6 @@ impl<S> Service<ServiceRequest> for CheckForSecretMiddleware<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse, Error = Error>,
     S::Future: 'static,
-
 {
     type Response = ServiceResponse;
     type Error = Error;
@@ -64,13 +61,15 @@ where
                     });
                 } else {
                     return Box::pin(async move {
-                        let not_auth = HttpResponse::Unauthorized().body("You do not have the correct secret");
+                        let not_auth =
+                            HttpResponse::Unauthorized().body("You do not have the correct secret");
                         return Ok(ServiceResponse::new(req.request().clone(), not_auth));
                     });
                 }
             }
             _ => Box::pin(async move {
-                let not_auth = HttpResponse::Unauthorized().body("You do not have a secret saved in the .env file");
+                let not_auth = HttpResponse::Unauthorized()
+                    .body("You do not have a secret saved in the .env file");
                 return Ok(ServiceResponse::new(req.request().clone(), not_auth));
             }),
         }
