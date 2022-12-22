@@ -1,5 +1,5 @@
 //use urlencoding::encode;
-use crate::actions::{get_entry, insert_new_entry};
+use crate::actions::{get_entry, get_keys_by_prefix, insert_new_entry};
 use actix_web::web;
 use actix_web::{
     delete, get, post,
@@ -97,7 +97,7 @@ pub struct KeyList {
 }
 
 #[get("")]
-pub async fn list_keys(params: Query<KeyList>) -> HttpResponse {
+pub async fn list_keys(pool: web::Data<DbPool>, params: Query<KeyList>) -> HttpResponse {
     let params = params.into_inner();
     let encode_keys = match params.encode {
         Some(param_encode) => param_encode,
@@ -105,22 +105,32 @@ pub async fn list_keys(params: Query<KeyList>) -> HttpResponse {
     };
 
     let pretend_keys = ["test", "test2", "{'test': 'test}", "pl a a "];
-    println!("{}", encode_keys);
-    match encode_keys {
-        true => {
-            let mut enocded_keys: Vec<String> = Vec::new();
-            for key in pretend_keys {
-                let encoded_key = encode(key).into_owned();
-                enocded_keys.push(encoded_key);
-            }
-            let res = enocded_keys.join("\n");
-            print!("Encode truye");
-            return HttpResponse::Ok().body(format!("{}", res));
-        }
-        false => {
-            let res = pretend_keys.join("\n");
 
-            return HttpResponse::Ok().body(format!("{}", res));
-        }
+    let results = web::block(move || {
+        let mut conn = pool.get().unwrap();
+        get_keys_by_prefix(&mut conn, params.prefix)
+    })
+    .await
+    .map_err(actix_web::error::ErrorInternalServerError);
+
+    match results {
+        Ok(keys) => match encode_keys {
+            true => {
+                let mut encoded_keys: Vec<String> = Vec::new();
+                for key in keys {
+                    let encoded_key = encode(key.as_str()).into_owned();
+                    encoded_keys.push(encoded_key);
+                }
+                let res = encoded_keys.join("\n");
+                print!("Encode truye");
+                return HttpResponse::Ok().body(format!("{}", res));
+            }
+            false => {
+                let res = keys.join("\n");
+
+                return HttpResponse::Ok().body(format!("{}", res));
+            }
+        },
+        Err(_) => HttpResponse::Ok().body(format!("")),
     }
 }

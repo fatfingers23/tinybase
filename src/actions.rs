@@ -15,7 +15,7 @@ pub fn insert_new_entry(
         value: new_value,
     };
 
-    _ = diesel::insert_into(key_values)
+    let _ = diesel::insert_into(key_values)
         .values(&new_key_value)
         .on_conflict(key)
         .do_update()
@@ -39,4 +39,20 @@ pub fn get_entry(
     Ok(entry)
 }
 
-pub fn get_keys_by_prefix(conn: &mut SqliteConnection, prefix: String) {}
+pub fn get_keys_by_prefix(conn: &mut SqliteConnection, prefix: String) -> Vec<String> {
+    use crate::schema::key_values::dsl::*;
+
+    let pattern = format!("{}%", prefix);
+
+    let query_results = key_values
+        .filter(key.like(pattern))
+        .load::<models::KeyValue>(conn)
+        .expect("Could not load the keys");
+    let mut results: Vec<String> = Vec::new();
+
+    for entry in query_results {
+        results.push(entry.key);
+    }
+
+    results
+}
