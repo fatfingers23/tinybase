@@ -1,10 +1,10 @@
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 
 mod actors;
 mod auth_middleware;
 mod controllers;
 mod data_access;
-mod migrations;
+
 use std::{
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -29,16 +29,14 @@ use diesel::{
 };
 use std::env;
 
+use data_access::migrations;
 use uuid::Uuid;
 
 extern crate dotenv;
-//extern crate urlencoding;
 
-// pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../migrations");
-
-async fn index() -> impl Responder {
-    NamedFile::open_async("./static/index.html").await.unwrap()
-}
+// async fn index() -> impl Responder {
+//     NamedFile::open_async("./static/index.html").await.unwrap()
+// }
 
 /// Entry point for our websocket route
 async fn chat_route(
@@ -119,8 +117,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::from(app_state.clone()))
             .app_data(web::Data::new(server.clone()))
-            .service(Files::new("/static", "./static"))
-            .service(web::resource("/").to(index))
+            // .service(Files::new("/static", "./static"))
+            // .service(web::resource("/").to(index))
             .service(
                 web::scope("/v0/{secret}")
                     .route("/ws", web::get().to(chat_route))
