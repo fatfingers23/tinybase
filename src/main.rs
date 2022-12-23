@@ -1,8 +1,10 @@
+use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+
 mod actors;
 mod auth_middleware;
 mod controllers;
 mod data_access;
-
+mod migrations;
 use std::{
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -19,16 +21,20 @@ use actix_web::{
 use actix_web_actors::ws;
 use actors::{session::WsChatSession, ws_actor::ClientWebSocketConnection};
 use controllers::key_controller::*;
+use diesel::r2d2::ManageConnection;
+// extern crate diesel_migrations;
 use diesel::{
     prelude::*,
     r2d2::{self, ConnectionManager},
 };
 use std::env;
-use std::env::VarError;
+
 use uuid::Uuid;
 
 extern crate dotenv;
 //extern crate urlencoding;
+
+// pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("../migrations");
 
 async fn index() -> impl Responder {
     NamedFile::open_async("./static/index.html").await.unwrap()
@@ -82,13 +88,20 @@ async fn main() -> std::io::Result<()> {
     let server = ClientWebSocketConnection::new(app_state.clone()).start();
 
     // set up database connection pool
-    let conn_spec = env::var("DATABASE_URL").expect("DATABASE_URL");
+    let conn_spec = match env::var("DATABASE_URL") {
+        Ok(db_name) => db_name,
+        Err(_) => "tinybase.db".to_string(),
+    };
+
     let manager = ConnectionManager::<SqliteConnection>::new(conn_spec);
+
     let pool = r2d2::Pool::builder()
         .build(manager)
         .expect("Failed to create pool.");
+    let mut conn = pool.get().expect("Could not get instance of the DB");
+    migrations::run(&mut conn).unwrap();
+    drop(conn);
 
-    // let mut host = "0.0.0.0";
     let port: u16 = match env::var("DB_PORT") {
         Ok(unwrapped_port) => unwrapped_port.parse().unwrap(),
         Err(_) => 8080,
@@ -98,10 +111,6 @@ async fn main() -> std::io::Result<()> {
         Ok(unwrapped_host) => unwrapped_host,
         Err(_) => "0.0.0.0".to_string(),
     };
-
-    // if let env_host = env::var("SECRET") {
-    //     host = env_host.unwrap().as_str();
-    // }
 
     log::info!("starting HTTP server at http://{host}:{port}");
 
