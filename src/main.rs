@@ -23,7 +23,10 @@ use diesel::{
     prelude::*,
     r2d2::{self, ConnectionManager},
 };
+use std::env;
+use std::env::VarError;
 use uuid::Uuid;
+
 extern crate dotenv;
 //extern crate urlencoding;
 
@@ -37,7 +40,6 @@ async fn chat_route(
     stream: web::Payload,
     srv: web::Data<Addr<ClientWebSocketConnection>>,
 ) -> Result<HttpResponse, Error> {
-    println!();
     ws::start(
         WsChatSession {
             id: Uuid::new_v4(),
@@ -80,13 +82,29 @@ async fn main() -> std::io::Result<()> {
     let server = ClientWebSocketConnection::new(app_state.clone()).start();
 
     // set up database connection pool
-    let conn_spec = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+    let conn_spec = env::var("DATABASE_URL").expect("DATABASE_URL");
     let manager = ConnectionManager::<SqliteConnection>::new(conn_spec);
     let pool = r2d2::Pool::builder()
         .build(manager)
         .expect("Failed to create pool.");
 
-    log::info!("starting HTTP server at http://localhost:8080");
+    // let mut host = "0.0.0.0";
+    let port: u16 = match env::var("DB_PORT") {
+        Ok(unwrapped_port) => unwrapped_port.parse().unwrap(),
+        Err(_) => 8080,
+    };
+
+    let host = match env::var("DB_HOST") {
+        Ok(unwrapped_host) => unwrapped_host,
+        Err(_) => "0.0.0.0".to_string(),
+    };
+
+    // if let env_host = env::var("SECRET") {
+    //     host = env_host.unwrap().as_str();
+    // }
+
+    log::info!("starting HTTP server at http://{host}:{port}");
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(pool.clone()))
@@ -108,7 +126,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
     })
     .workers(2)
-    .bind(("127.0.0.1", 8080))?
+    .bind((host, port))?
     .run()
     .await
 }

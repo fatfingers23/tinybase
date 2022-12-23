@@ -62,18 +62,19 @@ pub struct KeyPath {
 pub async fn get_key(pool: web::Data<DbPool>, params: Path<KeyPath>) -> HttpResponse {
     let params = params.into_inner();
     let key = params.key;
-    let entry = web::block(move || {
-        let mut conn = pool.get()?;
+    let result = web::block(move || {
+        let mut conn = pool.get().unwrap();
         get_entry(&mut conn, key)
     })
     .await
-    .map_err(actix_web::error::ErrorInternalServerError);
+    .map_err(actix_web::error::ErrorInternalServerError)
+    .unwrap();
 
-    match entry {
-        Ok(unwrapped_entry) => {
-            let value = unwrapped_entry.unwrap().unwrap().value;
-            return HttpResponse::Ok().body(format!("{}", value));
-        }
+    match result {
+        Ok(entry) => match entry {
+            None => HttpResponse::Ok().body(format!("")),
+            Some(unwrapped_entry) => HttpResponse::Ok().body(format!("{}", unwrapped_entry.value)),
+        },
         Err(_) => HttpResponse::Ok().body(format!("")),
     }
 }
