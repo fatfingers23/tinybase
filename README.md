@@ -21,3 +21,7 @@ Look into setting this DB up as a binrary to run on a replit. Can probably call 
 1. Set db .env file
 2. Install diesel cli
 3. run `diesel setup`
+
+
+## Notes
+Used to build for repl `sudo docker run --rm --user "$(id -u)":"$(id -g)" -v "$PWD":/usr/src/myapp -w /usr/src/myapp rust cargo build --release`

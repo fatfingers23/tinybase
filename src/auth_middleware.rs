@@ -7,6 +7,7 @@ use futures::{
     Future,
 };
 use std::env;
+use std::env::VarError;
 use std::pin::Pin;
 // There are two steps in middleware processing.
 // 1. Middleware initialization, middleware factory gets called with
@@ -50,22 +51,33 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let secret: String = req.match_info().get("secret").unwrap().parse().unwrap();
-        return match env::var("SECRET").unwrap() {
-            saved_secret => {
-                if saved_secret == secret {
-                    let fut = self.service.call(req);
-                    Box::pin(async move {
-                        let res = fut.await?;
-                        return Ok(res);
-                    })
-                } else {
-                    Box::pin(async move {
-                        let not_auth =
-                            HttpResponse::Unauthorized().body("You do not have the correct secret");
-                        return Ok(ServiceResponse::new(req.request().clone(), not_auth));
-                    })
+        return match env::var("SECRET") {
+            saved_secret => match saved_secret {
+                Ok(unwrapped_secret) => {
+                    if unwrapped_secret == secret {
+                        let fut = self.service.call(req);
+                        Box::pin(async move {
+                            let res = fut.await?;
+                            return Ok(res);
+                        })
+                    } else {
+                        Box::pin(async move {
+                            return Ok(ServiceResponse::new(
+                                req.request().clone(),
+                                HttpResponse::Unauthorized()
+                                    .body("You do not have the correct secret"),
+                            ));
+                        })
+                    }
                 }
-            }
+                Err(_) => Box::pin(async move {
+                    Ok(ServiceResponse::new(
+                        req.request().clone(),
+                        HttpResponse::Unauthorized()
+                            .body("You do not have an env variable set for the secret"),
+                    ))
+                }),
+            },
         };
     }
 }
